@@ -1,8 +1,0 @@
-pydantic==2.10.1
-httpx==0.27.2
-llama-index-core
-llama-index-llms-openai
-llama-index-llms-replicate
-llama-index-embeddings-huggingface
-requests
-requests_oauthlib

@@ -3,6 +3,10 @@ from enum import Enum
 from pydantic import BaseModel, field_validator as validator
 from typing import Optional, List, Callable, Union, Any, Literal
 
+
+# TODO: REFINE TYPES
+
+
 class Genders(str, Enum):
     MALE = "male"
     FEMALE = "female"
@@ -17,14 +21,16 @@ class Tones(str, Enum):
     AGGRESSIVE = "aggressive"
     FUNNY = "funny"
 
+
 class Emotions(BaseModel):
-    emtional_responsiveness: float # Scale 0-1 (reactive vs. calm)
-    empathy_level: float # Scale 0-1 (low empathy vs. high empathy)
+    emtional_responsiveness: float  # Scale 0-1 (reactive vs. calm)
+    empathy_level: float  # Scale 0-1 (low empathy vs. high empathy)
 
+    trigger_words: List[str] = (
+        []
+    )  # Words that will trigger aggressive responses from the model
 
-    trigger_words: List[str] = [] # Words that will trigger aggressive responses from the model
-
-    @validator('trigger_words', mode="before")
+    @validator("trigger_words", mode="before")
     def validate_single_word(cls, word):
         if " " in word:
             raise ValueError(f"'{word}' contains spaces and is not a single word.")
@@ -44,13 +50,12 @@ class Tendencies(BaseModel):
 
     # Communication styles
     tone: Optional[Tones] = Tones.CASUAL
-    passiveness: float # Scale 0-1 (not passive to extremely passive) Determines the amount of resistance an agent will give to a suggestion from another agent
+    passiveness: float  # Scale 0-1 (not passive to extremely passive) Determines the amount of resistance an agent will give to a suggestion from another agent
 
     # Behavioral Traits
     risk_tolerance: float  # Scale 0-1 (risk-averse vs. risk-taking)
     patience_level: float  # Scale 0-1 (impatient vs. patient)
     decision_making: str  # "impulsive", "deliberate", "balanced", etc.
-
 
     # Values and Motivations
     core_vales: List[str]

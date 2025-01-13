@@ -1,3 +1,6 @@
+## TODO: more specific llms errors
+
+
 class CommunicationsProtocolError(Exception):
     msg: str
     status_code: int
