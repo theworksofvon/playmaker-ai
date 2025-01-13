@@ -3,6 +3,7 @@ from typing import List, Dict, Union, Optional, Any
 from .agent import Agent
 from .engines.reasoning_engine import ReasoningEngine
 
+
 class Agency:
     def __init__(self, agents: List[Agent]) -> None:
         """
@@ -14,10 +15,10 @@ class Agency:
         self.context: Dict[str, Any] = {}
         self.reasoner = None
         self.tools = next((agent.tools for agent in agents if agent.tools), None)
-        
+
         if not self.pilot:
             raise ValueError("Agency must have at least one pilot agent.")
-        
+
     def _establish_reasoning_engine(self) -> None:
         if self.pilot is None:
             raise ValueError("Pilot agent must be initialized")
@@ -30,14 +31,16 @@ class Agency:
                 return agent
         print("No agent found")
         return None
-    
+
     def update_context(self, key: str, value: Any) -> None:
         """
         Updates the shared context with new information.
         """
         self.context[key] = value
 
-    async def send_message(self, sender: str, message: str, receiver: Optional[str] = None) -> Union[str, None]:
+    async def send_message(
+        self, sender: str, message: str, receiver: Optional[str] = None
+    ) -> Union[str, None]:
         """
         Facilitates communication between agents.
 
@@ -63,49 +66,51 @@ class Agency:
         Executes tasks for all worker agents, facilitates communication with the pilot,
         and incorporates reasoning and decision-making.
         """
+
         async def process_agent(agent: Agent):
-                print(f"Running task for worker agent: {agent.name}")
+            print(f"Running task for worker agent: {agent.name}")
 
-                max_iterations = 1
-                feedback_iterations = 0
-                
-                # Create generator
-                gen = agent.run()
-                
-                try:
-                    # Start the generator
-                    result = await gen.__anext__()
+            max_iterations = 1
+            feedback_iterations = 0
 
-                    # must be string for prompting
-                    if not isinstance(result, str):
-                        result = str(result)
-                    
-                    while feedback_iterations < max_iterations:
-                        print(f"Task result from {agent.name}: {result}")
-                        
-                        # Update shared context
-                        self.update_context(agent.name, result)
-                        
-                        # Get feedback
-                        feedback = await self.send_message(sender=agent.name, message=result)
-                        
-                        # Send feedback and get next result
-                        result = await gen.asend(feedback)
-                        feedback_iterations += 1
-                        
-                except StopAsyncIteration as error:
-                    print(error)
-                    return None
-                    
-                return result
+            # Create generator
+            gen = agent.run()
 
+            try:
+                # Start the generator
+                result = await gen.__anext__()
+
+                # must be string for prompting
+                if not isinstance(result, str):
+                    result = str(result)
+
+                while feedback_iterations < max_iterations:
+                    print(f"Task result from {agent.name}: {result}")
+
+                    # Update shared context
+                    self.update_context(agent.name, result)
+
+                    # Get feedback
+                    feedback = await self.send_message(
+                        sender=agent.name, message=result
+                    )
+
+                    # Send feedback and get next result
+                    result = await gen.asend(feedback)
+                    feedback_iterations += 1
+
+            except StopAsyncIteration as error:
+                print(error)
+                return None
+
+            return result
+
+        # TODO: Able to process multiple agents concurrently
         # Establish Reasoning engine and decision-making first: Determine which agents to run
         self._establish_reasoning_engine()
         action_plan = await self.reasoner.reason(task=starting_prompt)
         agent = self._find_agent_by_tool(action_plan.plan.tool_name)
-        tasks = [
-            process_agent(agent=agent)
-        ]
+        tasks = [process_agent(agent=agent)]
 
         # Process all selected agents concurrently
         results = await asyncio.gather(*tasks, return_exceptions=True)

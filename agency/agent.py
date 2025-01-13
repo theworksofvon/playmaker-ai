@@ -7,14 +7,12 @@ from .communication import CommunicationProtocol
 from .exceptions import CommunicationsProtocolError
 from .retrievers.retriever import BaseRetriever
 from .tools import BaseTool
-from .tools.default_tools import gen_art_tool
 from .session import Session
+
 
 class Agent(BaseModel, ABC):
 
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
+    model_config = {"arbitrary_types_allowed": True}
 
     """
     Base AGENT class that stores general agent info, personality, and the task the agent
@@ -42,12 +40,11 @@ class Agent(BaseModel, ABC):
     instructions: Union[str, Callable[[], str]] = "You are a helpful assistant agent."
     tendencies: Optional[Tendencies] = None
     role: Roles = "crew"
-    tools: Optional[List[BaseTool]] = [gen_art_tool]
-    retrievers: Optional[List[BaseRetriever]] = None # vector stores to use when specific info is needed
+    tools: Optional[List[BaseTool]] = []
+    retrievers: Optional[List[BaseRetriever]] = (
+        None  # vector stores to use when specific info is needed
+    )
     communication_protocol: type[CommunicationProtocol] = None
-    
-
-
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -58,14 +55,13 @@ class Agent(BaseModel, ABC):
         )
         self.active_session = None
 
-
     async def start_session(self) -> Session:
         """Create and activate a new session"""
         session = Session(agent_id=self.name)
         self._sessions[session.session_id] = session
         self.active_session = session
         return session
-        
+
     async def load_session(self, session_id: str) -> Optional[Session]:
         """Load an existing session"""
         session = self._sessions.get(session_id)
@@ -73,6 +69,9 @@ class Agent(BaseModel, ABC):
             self.active_session = session
         return session
 
+    async def query_with_retriever(self):
+        """Goes through list of retrievers and find one best suited for request"""
+        pass
 
     def _build_personality(self) -> str:
         """
@@ -83,7 +82,8 @@ class Agent(BaseModel, ABC):
         )
         tendencies_description = f"You're Tendecies are: {str(self.tendencies)}, ranking system for tendecies is from 0 (lowest) to 1 (highest)"
         return f"{base_instructions} : {tendencies_description}"
-    
+
+    # TODO : Maybe remove this
     async def reinforce_personality(self) -> bool:
         """
         Prompts the model with a message from "creator" to re-emphasize the personality.
@@ -98,15 +98,18 @@ class Agent(BaseModel, ABC):
         except Exception as error:
             print(f"Error reinforcing personality: {error}")
             return False
-        
+
     async def _establish_agent() -> bool:
         pass
 
-
-    async def prompt(self, message: str, sender: str = "user", format: Optional[Dict] = None):
+    async def prompt(
+        self, message: str, sender: str = "user", format: Optional[Dict] = None
+    ):
         """Basic Prompt with default model, Communication layer opened to talk to this agent."""
         try:
-            res = await self.communication_protocol.send_prompt(message, sender=sender, format=format)
+            res = await self.communication_protocol.send_prompt(
+                message, sender=sender, format=format
+            )
             return res
         except CommunicationsProtocolError as error:
             print(f"Error occured: {error.msg}, status_code: {error.status_code}")
@@ -128,4 +131,19 @@ class Agent(BaseModel, ABC):
             result = await self.prompt(message=feedback, sender="pilot")
             yield result
 
+    # TODO: implement these methods, Agent's default actions
 
+    async def deploy_token():
+        pass
+
+    async def transfer():
+        pass
+
+    async def get_token_price():
+        pass
+
+    async def launch_token():
+        pass
+
+    async def send_airdrop():
+        pass

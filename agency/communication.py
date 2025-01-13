@@ -1,18 +1,20 @@
 import os
 from typing import Dict, List, Optional
-import httpx
+import aiohttp
+from openai import OpenAI
 from .config import config
 from .exceptions import CommunicationsProtocolError
 
+
 class CommunicationProtocol:
     """
-    This protocol determines the communication layer between agents. 
-    The protocol is model-agnostic and handles both local (e.g., Ollama) 
-    and remote models (e.g., OpenAI API), incorporating agent-specific personality 
+    This protocol determines the communication layer between agents.
+    The protocol is model-agnostic and handles both local (e.g., Ollama)
+    and remote models (e.g., OpenAI API), incorporating agent-specific personality
     and context.
     """
 
-    def __init__(self, model: str,  personality: str = "") -> None:
+    def __init__(self, model: str, personality: str = "") -> None:
         """
         Initialize the communication protocol with the specified model.
 
@@ -23,7 +25,9 @@ class CommunicationProtocol:
         """
         self.model = model.lower()
         self.personality = personality  # Personality of the agent
-        self.history: List[Dict[str, str]] = []  # To track the context of the conversation
+        self.history: List[Dict[str, str]] = (
+            []
+        )  # To track the context of the conversation
 
     ## TODO: validate every response that goes out
     def _validate_llm_response(self, response: str):
@@ -31,7 +35,10 @@ class CommunicationProtocol:
             return True
         return False
 
-    async def send_prompt(self, prompt: str, sender: str, format: Optional[Dict] = None) -> str:
+    ## TODO: ollama to respond in json
+    async def send_prompt(
+        self, prompt: str, sender: str, format: Optional[Dict] = None
+    ) -> str:
         """
         Send a prompt to the model, including personality and history, and return the response.
         Mainly for agent -> agent communication.
@@ -56,6 +63,7 @@ class CommunicationProtocol:
             raise CommunicationsProtocolError(error_message, status_code=400)
         return response
 
+    # TODO: Maximine use of 128k token context window, better prompt building
     def _build_prompt(self, prompt: str, sender: str) -> str:
         """
         Combine personality, context, and the new prompt into a full query.
@@ -66,7 +74,9 @@ class CommunicationProtocol:
         Returns:
             str: The full prompt including personality and history.
         """
-        context = "\n".join([f"{item['role']}: {item['content']}" for item in self.history[-5:]])  # Last 5 interactions
+        context = "\n".join(
+            [f"{item['role']}: {item['content']}" for item in self.history[-5:]]
+        )  # Last 5 interactions
         return f"{self.personality}\n\n{context}\n\nUser - {sender}: {prompt}"
 
     async def _send_to_ollama(self, prompt: str, format: Optional[Dict] = None) -> str:
@@ -80,18 +90,26 @@ class CommunicationProtocol:
             str: The model's response.
         """
         url = f"{config.OLLAMA_API_URL}/generate"
-        async with httpx.AsyncClient() as client:
+        async with aiohttp.AsyncClient() as session:
 
             try:
-                res = await client.post(url, json={"prompt": prompt, "stream": False, "model": self.model, "format": format})
-                res.raise_for_status()
-                return res.json()["response"]
-            except httpx.RequestError as error:
-                error_message = (f"Error communicating with Ollama model: {self.model}, error: {error}")
+                async with session.post(
+                    url,
+                    json={
+                        "prompt": prompt,
+                        "stream": False,
+                        "model": self.model,
+                        "format": format,
+                    },
+                ) as res:
+                    res.raise_for_status()
+                    return res.json()["response"]
+            except Exception as error:
+                error_message = f"Error communicating with Ollama model: {self.model}, error: {error}"
                 print(error_message)
                 raise CommunicationsProtocolError(error_message, status_code=400)
 
-    async def _send_to_openai(self, prompt: str) -> str:
+    async def _send_to_openai(self, prompt: str, model: Optional[str] = None) -> str:
         """
         Handle communication with the OpenAI API.
 
@@ -104,19 +122,20 @@ class CommunicationProtocol:
         api_key = self.config.get("openai_api_key", os.getenv("OPENAI_API_KEY"))
         if not api_key:
             raise ValueError("OpenAI API key is missing.")
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": self.config.get("openai_model", "gpt-4"),
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-            )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"]
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
+        try:
+            completion = client.chat.completions.create(
+                model=model if model else self.model,
+                messages=[{"role": "user", "content": f"{prompt}"}],
+            )
+            return completion.choices[0].message.content
+        except Exception as error:
+            error_message = (
+                f"Error communicating with OpenAI model: {self.model}, error: {error}"
+            )
+            print(error_message)
+            raise CommunicationsProtocolError(error_message, status_code=400)
 
     def _update_history(self, role: str, content: str) -> None:
         """
@@ -133,21 +152,3 @@ class CommunicationProtocol:
         Clear the conversation history.
         """
         self.history = []
-
-    def test_connection(self) -> bool:
-        """
-        Test the connection to the configured model endpoint.
-
-        Returns:
-            bool: True if the connection is successful, False otherwise.
-        """
-        try:
-            if self.model == "ollama":
-                response = httpx.get(self.config.get("ollama_endpoint", "http://localhost:8000/api/version"))
-                return response.status_code == 200
-            elif self.model == "openai":
-                return bool(os.getenv("OPENAI_API_KEY") or self.config.get("openai_api_key"))
-            else:
-                return False
-        except Exception:
-            return False
