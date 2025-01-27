@@ -22,7 +22,7 @@ The **Agency** library enables the creation of AI agents that:
 4. **Iterate for Refinement**: The process iterates until the reasoning engine approves the final result.
 
 ## **Future Developments**
-1. Impl. a scheudler inside agency lib that will better orchestrate when agents should be running, a step toward autonomy.
+1. Impl. a scheduler inside agency lib that will better orchestrate when agents should be running, a step toward autonomy.
 
 ### **Pluto AI**
 Pluto AI uses the **Agency** framework to:
