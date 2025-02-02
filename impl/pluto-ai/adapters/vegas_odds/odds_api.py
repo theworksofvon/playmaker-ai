@@ -31,7 +31,7 @@ class VegasOddsPipeline(VegasOddsInterface):
         current_odds = await self._fetch(url=url, params=params)
         return current_odds
 
-    async def get_histroical_odds(
+    async def get_historical_odds(
         self,
         date: int,  # timestamp in milliseconds
         sport: str | None = " basketball_nba",

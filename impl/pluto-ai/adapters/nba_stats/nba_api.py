@@ -4,8 +4,8 @@ from nba_api.stats.static import players, teams
 from nba_api.stats.endpoints import (
     commonplayerinfo,
     playercareerstats,
-    teamgamelogs,
-    playergamelogs,
+    teamgamelog,
+    playergamelog,
     playbyplayv2,
 )
 from nba_api.live.nba.endpoints import scoreboard
@@ -87,8 +87,8 @@ class NbaAnalyticsPipeline(NbaAnalyticsInterface):
         player_id = player_dict[0]["id"]
 
         # Fetch player game logs
-        logs = playergamelogs.PlayerGameLogs(
-            player_id=player_id, season_nullable=season
+        logs = playergamelog.PlayerGameLog(
+            player_id=player_id, season=season
         )
         logs_df = logs.get_data_frames()[0]
         return logs_df
@@ -126,7 +126,7 @@ class NbaAnalyticsPipeline(NbaAnalyticsInterface):
         team_id = team_dict[0]["id"]
 
         # Fetch game logs
-        logs = teamgamelogs.TeamGameLogs(team_id=team_id, season_nullable=season)
+        logs = teamgamelog.TeamGameLog(team_id=team_id, season=season)
         logs_df = logs.get_data_frames()[0]
         return logs_df
 
@@ -155,30 +155,3 @@ class NbaAnalyticsPipeline(NbaAnalyticsInterface):
     def get_todays_game_scoreboard(self):
         games = scoreboard.ScoreBoard()
         return games.get_dict()
-
-    # ------------------------------
-    # UTILITY METHODS
-    # ------------------------------
-
-    def save_to_csv(self, data: pd.DataFrame, filename: str):
-        """
-        Save data to a CSV file.
-
-        Args:
-            data (pd.DataFrame): DataFrame to save.
-            filename (str): File path for saving the data.
-        """
-        data.to_csv(filename, index=False)
-        print(f"Data saved to {filename}")
-
-    def load_from_csv(self, filename: str) -> pd.DataFrame:
-        """
-        Load data from a CSV file.
-
-        Args:
-            filename (str): Path to the CSV file.
-
-        Returns:
-            pd.DataFrame: Loaded data.
-        """
-        return pd.read_csv(filename)

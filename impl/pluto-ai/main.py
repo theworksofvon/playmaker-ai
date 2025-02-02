@@ -1,24 +1,26 @@
 import asyncio
 
-from agents import aggregator, twitter_poster
-from agency.agency import Agency
+# from agents import aggregator, twitter_poster
+# from agency.agency import Agency
 from adapters import Adapters
+from utils import save_to_csv
 
 
 async def main():
 
-    agency = Agency([aggregator, twitter_poster])
+    # agency = Agency([aggregator, twitter_poster])
 
-    resp = await agency.run(
-        starting_prompt="What are all of the actions you can currently do ?"
-    )
+    # resp = await agency.run(
+    #     starting_prompt="What are all of the actions you can currently do ?"
+    # )
 
-    print(f"Response from Agency: {resp}")
+    # print(f"Response from Agency: {resp}")
     adapters = Adapters()
 
-    games = adapters.nba_analytics.get_todays_game_scoreboard()
+    resp = adapters.nba_analytics.get_team_game_logs("Los Angeles Lakers", "2024-25")
 
-    print(f"player info: {games}")
+    print(f"career stats: {resp}")
+    
 
 
 if __name__ == "__main__":

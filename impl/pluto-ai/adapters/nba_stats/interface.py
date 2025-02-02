@@ -104,30 +104,3 @@ class NbaAnalyticsInterface(ABC):
             Dict: Dictionary containing today's game data.
         """
         pass
-
-    # ------------------------------
-    # UTILITY METHODS
-    # ------------------------------
-    @abstractmethod
-    async def save_to_csv(self, data: pd.DataFrame, filename: str) -> None:
-        """
-        Save data to a CSV file.
-
-        Args:
-            data (pd.DataFrame): DataFrame to save.
-            filename (str): File path for saving the data.
-        """
-        pass
-
-    @abstractmethod
-    async def load_from_csv(self, filename: str) -> pd.DataFrame:
-        """
-        Load data from a CSV file.
-
-        Args:
-            filename (str): Path to the CSV file.
-
-        Returns:
-            pd.DataFrame: Loaded data.
-        """
-        pass
